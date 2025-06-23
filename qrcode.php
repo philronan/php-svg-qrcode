@@ -33,8 +33,8 @@ if (realpath(__FILE__) == realpath($_SERVER['SCRIPT_FILENAME'])) {
 }
 
 class QRCode {
-	private $data;
-	private $options;
+	protected $data;
+	protected $options;
 
 	public function __construct($data, $options = []) {
 		$defaults = [
@@ -104,7 +104,7 @@ class QRCode {
 
 	/* - - - - INTERNAL FUNCTIONS - - - - */
 
-	private function encode_and_calculate_size($data, $options) {
+	protected function encode_and_calculate_size($data, $options) {
 		$code = $this->dispatch_encode($data, $options);
 		$widths = array(
 			(isset($options['wq']) ? (int)$options['wq'] : 1),
@@ -1166,7 +1166,7 @@ class QRCode {
 		4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0,
 	);
 
-	private $qr_alignment_patterns = array(
+	protected $qr_alignment_patterns = array(
 		array(6, 18),
 		array(6, 22),
 		array(6, 26),
