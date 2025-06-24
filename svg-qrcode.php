@@ -28,12 +28,6 @@ DEALINGS IN THE SOFTWARE.
 require(__DIR__ . '/qrcode.php');
 
 class SVGQRCode extends QRCode {
-    private $alignment_locations;
-
-    public function __construct($data, $options = []) {
-        parent::__construct($data, $options);
-        $this->alignment_locations = [];
-    }
 
     public function output_svg() {
         $image = $this->render_svg();
@@ -53,19 +47,6 @@ class SVGQRCode extends QRCode {
         $qr_version = ($code_size - 17) >> 2;
         $canvas_size = ($code_size + 2 * $safe_zone) * $scale;
 
-        // Regenerate the locations of the alignment patterns. These are going to be
-        // rendered differently
-		if ($qr_version >= 2) {
-			$alignment = $this->qr_alignment_patterns[$qr_version - 2];
-			foreach ($alignment as $i) {
-				foreach ($alignment as $j) {
-					if (!$code['b'][$i][$j]) {
-                        $this->alignment_locations[] = [$i,$j];
-					}
-				}
-			}
-		}
-
         $xml = "<?xml version=\"1.0\" standalone=\"no\"?>\n";
         $xml .= "<svg width=\"$canvas_size\" height=\"$canvas_size\" version=\"1.1\" ";
         $xml .= "viewBox=\"0 0 $canvas_size $canvas_size\" xmlns=\"http://www.w3.org/2000/svg\">\n";
@@ -80,21 +61,33 @@ class SVGQRCode extends QRCode {
         $xml .= "<g id=\"qr-code\"><g>\n";
         // $xml .= "<rect x=\"0\" y=\"0\" width=\"$canvas_size\" height=\"$canvas_size\" fill=\"#$bgcolor\"/>\n";
         $xml .= "<g fill=\"#000\">\n";
+
+        // Add the alignment patterns
         if ($qr_version >= 2) {
-            $target_locations = $this->qr_alignment_patterns[$qr_version-2];
-            foreach($this->alignment_locations as $aloc) {
-                $tx = $aloc[1];
-                $ty = $aloc[0];
-                for ($xx =-2; $xx <= 2; $xx++) {
-                    for ($yy =-2; $yy <= 2; $yy++) {
-                        $code['b'][$ty+$yy][$tx+$xx] = 0;
+			$alignment = $this->qr_alignment_patterns[$qr_version - 2];
+            $n = count($alignment);
+            for ($p=0; $p<$n; $p++) {
+                for ($q=0; $q<$n; $q++) {
+                    if (($p==0 && $q==0) || ($p==$n-1 && $q==0) || ($p==0 && $q==$n-1)) continue;
+                    $tx = $alignment[$p];
+                    $ty = $alignment[$q];
+
+                    // blank out the pixels set under this pattern
+                    for ($xx =-2; $xx <= 2; $xx++) {
+                        for ($yy =-2; $yy <= 2; $yy++) {
+                            $code['b'][$ty+$yy][$tx+$xx] = 0;
+                        }
                     }
+
+                    // Add this shape as a replacement
+                    $cx = ($safe_zone + $tx - 2) * $scale;
+                    $cy = ($safe_zone + $ty - 2) * $scale;
+                    $xml .= "<use href=\"#alignment\" x=\"$cx\" y=\"$cy\"/>\n";
                 }
-                $cx = ($safe_zone + $tx - 2) * $scale;
-                $cy = ($safe_zone + $ty - 2) * $scale;
-                $xml .= "<use href=\"#alignment\" x=\"$cx\" y=\"$cy\"/>\n";
             }
         }
+
+        // Drop in the finder patterns at three corners
         for ($dy=0; $dy<7; $dy++) {
             for ($dx=0; $dx<7; $dx++) {
                 $code['b'][$dy][$dx] = 0;
@@ -126,7 +119,11 @@ class SVGQRCode extends QRCode {
     }
 }
 
-$url = "https://q2me.uk/ABCDEFGHIJ";
-$gen = new SVGQRCode($url, $options=array('s'=>'qrm'));
-$svg = $gen->render_svg();
-die($svg);
+if (realpath(__FILE__) == realpath($_SERVER['SCRIPT_FILENAME'])) {
+    // Test
+    $data = $_SERVER['QUERY_STRING'];
+    if (!strlen($data)) $data = "https://github.com/philronan/php-svg-qrcode";
+    $gen = new SVGQRCode($data, $options=array('s'=>'qrm'));
+    $svg = $gen->render_svg();
+    die($svg);
+}
