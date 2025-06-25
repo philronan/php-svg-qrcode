@@ -121,9 +121,10 @@ class SVGQRCode extends QRCode {
 
 if (realpath(__FILE__) == realpath($_SERVER['SCRIPT_FILENAME'])) {
     // Test
-    $data = $_SERVER['QUERY_STRING'];
-    if (!strlen($data)) $data = "https://github.com/philronan/php-svg-qrcode";
+    $data = @$_GET['d'] or "https://github.com/philronan/php-svg-qrcode";
     $gen = new SVGQRCode($data, $options=array('s'=>'qrm'));
     $svg = $gen->render_svg();
     die($svg);
 }
+
+
